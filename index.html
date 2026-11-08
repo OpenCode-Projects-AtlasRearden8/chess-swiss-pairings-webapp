@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Club Swiss — Swiss Tournament Helper</title>
+<style>
+  :root {
+    --ink: #2d2a26;
+    --muted: #6f675e;
+    --paper: #faf7f2;
+    --card: #ffffff;
+    --line: #e7e0d6;
+    --accent: #166534;
+    --accent-soft: #e7f3ec;
+    --warn: #9a3412;
+    --warn-soft: #fdf0e7;
+    --board: #f3eee6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.1rem; margin: 0 0 .75rem; }
+  .tagline { color: var(--muted); margin: 0 0 1.5rem; font-size: .95rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1.1rem 1.2rem;
+    margin-bottom: 1.25rem;
+  }
+  .cards-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 700px) { .cards-2 { grid-template-columns: 1fr; } }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .3rem; }
+  input[type="text"] {
+    font: inherit;
+    width: 100%;
+    padding: .5rem .6rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--board);
+  }
+  input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button {
+    font: inherit;
+    padding: .45rem .9rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #14502b; }
+  .btn-ghost { font-size: .85rem; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { padding: .45rem .55rem; text-align: left; border-bottom: 1px solid var(--line); }
+  th { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .chip {
+    display: inline-block;
+    padding: .1rem .5rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: .8rem;
+    font-weight: 600;
+  }
+  .chip.bye { background: var(--warn-soft); color: var(--warn); }
+  .res-btns { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .res-btn {
+    font-size: .85rem;
+    padding: .3rem .6rem;
+    background: var(--board);
+  }
+  .res-btn sel { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .board-row.result-w { background: #f0f7f1; }
+  .board-row.result-b { background: #fdf1ec; }
+  .board-row.result-d { background: #f4f2ef; }
+  .notice { border-radius: 10px; padding: .6rem .8rem; font-size: .9rem; margin-bottom: 1rem; }
+  .notice-ok { background: var(--accent-soft); color: var(--accent); }
+  .notice-warn { background: var(--warn-soft); color: var(--warn); }
+  .empty { color: var(--muted); font-style: italic; }
+  .actions { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-top: .75rem; }
+  .hint { color: var(--muted); font-size: .82rem; margin: .5rem 0 0; }
+  .cross { font-variant-numeric: tabular-nums; }
+  .cross td, .cross th { padding: .35rem .4rem; font-size: .8rem; }
+  .cross .me { font-weight: 600; }
+  .players-list { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+  .player-pill {
+    display: inline-flex; align-items: center; gap: .45rem;
+    padding: .2rem .35rem .2rem .7rem;
+    border: 1px solid var(--line); border-radius: 999px; font-size: .85rem;
+    background: var(--board);
+  }
+  .player-pill button {
+    border: none; background: none; cursor: pointer;
+    padding: 0 .4rem; color: var(--muted); font-size: .95rem;
+  }
+  footer { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 2rem; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Club Swiss</h1>
+  <p class="tagline">A little helper for running a Swiss tournament at your club — pair rounds, enter results, print standings. Everything stays on this page.</p>
+  <div id="notice"></div>
+
+  <div class="card">
+    <h2>Players</h2>
+    <div class="cards-2">
+      <div>
+        <label for="player-name">Add player (one at a time)</label>
+        <input type="text" id="player-name" placeholder="e.g. Dana Reyes" autocomplete="off">
+        <div class="actions">
+          <button id="add-player-btn" class="btn-primary">Add player</button>
+          <label for="players-bulk" style="margin:0">Or paste a list:</label>
+          <input type="text" id="players-bulk" placeholder="comma-separated names">
+          <button id="add-bulk-btn" class="btn-ghost">Add list</button>
+        </div>
+        <p class="hint">Players can be removed only before Round 1 is paired.</p>
+      </div>
+      <div>
+        <label>Roster (<span id="player-count">0</span>)</label>
+        <div id="players-list" class="players-list"><span class="empty">No players yet.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="round-title">Rounds</h2>
+    <div class="actions">
+      <button id="pair-btn" class="btn-primary">Pair round 1</button>
+      <button id="reset-btn" class="btn-ghost">Start over</button>
+    </div>
+    <p class="hint" id="pair-hint">With an odd number of players, the lowest-scored player who hasn't had a bye receives a full-point bye.</p>
+    <div id="rounds-area"></div>
+  </div>
+
+  <div class="card">
+    <h2>Standings</h2>
+    <div id="standings-area"><p class="empty">Standings appear once results are entered.</p></div>
+    <div class="actions">
+      <button id="export-standings" class="btn-ghost">Download standings CSV</button>
+      <button id="export-cross" class="btn-ghost">Download cross-table CSV</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Cross-table</h2>
+    <div id="cross-area"><p class="empty">The cross-table builds as rounds are played.</p></div>
+  </div>
+
+  <footer>
+    Made for chess clubs by <strong>Asdale Dynamics, LLC</strong> · MIT license · Runs fully offline — nothing leaves your browser.
+  </footer>
+</main>
+
+<script>
+/* CORE-START */
+/* Pure tournament logic. No DOM access in this block, so tests can run it in Node. */
+(function (global) {
+  'use strict';
+
+  const WIN_POINTS = 1;
+  const DRAW_POINTS = 0.5;
+  const BYE_POINTS = 1;
+  const LOSS_POINTS = 0;
+
+  function createTournament(name) {
+    return {
+      name: typeof name === 'string' && name.trim() ? name.trim() : 'Club Swiss',
+      players: [],          // { id, name, num } — num is the cross-table column (registration order)
+      rounds: [],           // { pairings: [{ whiteId, blackId, result }], byeId }
+      nextPlayerId: 1
+    };
+  }
+
+  function findPlayer(t, id) {
+    return t.players.find(function (p) { return p.id === id; }) || null;
+  }
+
+  function addPlayer(t, name) {
+    const clean = typeof name === 'string' ? name.trim().replace(/\s+/g, ' ') : '';
+    if (!clean || clean.length > 60) return null;
+    const dupe = t.players.some(function (p) {
+      return p.name.toLowerCase() === clean.toLowerCase();
+    });
+    if (dupe) return null;
+    const player = { id: t.nextPlayerId++, name: clean, num: t.players.length + 1 };
+    t.players.push(player);
+    return player;
+  }
+
+  function removePlayer(t, id) {
+    if (t.rounds.length > 0) return false;
+    const idx = t.players.findIndex(function (p) { return p.id === id; });
+    if (idx === -1) return false;
+    t.players.splice(idx, 1);
+    t.players.forEach(function (p, i) { p.num = i + 1; });
+    return true;
+  }
+
+  /* Per-player totals derived from completed rounds (rounds with full results). */
+  function deriveStats(t) {
+    const stats = new Map();
+    t.players.forEach(function (p) {
+      stats.set(p.id, {
+        id: p.id, score: 0, wins: 0, draws: 0, losses: 0,
+        whites: 0, blacks: 0, byes: 0, opponents: [], games: 0,
+        lastColor: null, prevColor: null, streak: 0
+      });
+    });
+    t.rounds.forEach(function (round) {
+      round.pairings.forEach(function (pr) {
+        if (!pr.result) return;
+        const w = stats.get(pr.whiteId);
+        const b = stats.get(pr.blackId);
+        if (!w || !b) return;
+        w.opponents.push(pr.blackId);
+        b.opponents.push(pr.whiteId);
+        w.games++; b.games++;
+        if (pr.result === 'W') {
+          w.score += WIN_POINTS; w.wins++;
+          b.score += LOSS_POINTS; b.losses++;
+        } else if (pr.result === 'B') {
+          b.score += WIN_POINTS; b.wins++;
+          w.score += LOSS_POINTS; w.losses++;
+        } else {
+          w.score += DRAW_POINTS; w.draws++;
+          b.score += DRAW_POINTS; b.draws++;
+        }
+        w.whites++; b.blacks++;
+        w.streak = (w.prevColor === 'W') ? w.streak + 1 : 1;
+        b.streak = (b.prevColor === 'B') ? b.streak + 1 : 1;
+        w.prevColor = 'W'; b.prevColor = 'B';
+        w.lastColor = 'W'; b.lastColor = 'B';
+      });
+      if (round.byeId != null) {
+        const bp = stats.get(round.byeId);
+        if (bp) {
+          bp.score += BYE_POINTS;
+          bp.byes++;
+        }
+      }
+    });
+    return stats;
+  }
+
+  /* Buys the pairing table some determinism: score desc, then rank (registration) asc. */
+  function rankOrder(t, stats) {
+    return t.players.slice().sort(function (a, b) {
+      const sa = stats.get(a.id).score, sb = stats.get(b.id).score;
+      if (sb !== sa) return sb - sa;
+      return a.num - b.num;
+    });
+  }
+
+  function pairKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
+
+  function playedSet(t) {
+    const set = new Set();
+    t.rounds.forEach(function (r) {
+      r.pairings.forEach(function (pr) {
+        set.add(pairKey(pr.whiteId, pr.blackId));
+      });
+    });
+    return set;
+  }
+
+  /* Group players into score groups (equal scores), highest score first,
+     registration order within each group. */
+  function scoreGroups(t, stats, order) {
+    const groups = [];
+    let cur = null, curScore = null;
+    order.forEach(function (p) {
+      const s = stats.get(p.id).score;
+      if (!cur || s !== curScore) {
+        cur = [];
+        groups.push(cur);
+        curScore = s;
+      }
+      cur.push(p);
+    });
+    return groups;
+  }
+
+  function matchFold(pool, stats, played) {
+    /* Dutch-style: top half of the pool vs bottom half, fold partner first. */
+    const h = pool.length / 2;
+    if (h === 0) return [];
+    const S1 = pool.slice(0, h), S2 = pool.slice(h);
+    const wants = new Array(h);
+    for (let i = 0; i < h; i++) {
+      const di = dueColorOf(stats, S1[i].id);
+      const cands = [];
+      for (let j = 0; j < h; j++) {
+        if (played.has(pairKey(S1[i].id, S2[j].id))) continue;
+        const dj = dueColorOf(stats, S2[j].id);
+        const fit = colorFit(di, dj);
+        cands.push({ j: j, dist: Math.abs(j - i), fit: fit });
+      }
+      cands.sort(function (a, b) {
+        if (a.dist !== b.dist) return a.dist - b.dist;
+        if (a.fit !== b.fit) return a.fit - b.fit;
+        return a.j - b.j;
+      });
+      wants[i] = cands.map(function (c) { return c.j; });
+    }
+    const assigned = new Array(h).fill(-1);
+    const usedS2 = new Array(h).fill(false);
+    let steps = 0;
+    function bt(i) {
+      if (++steps > 200000) return false;
+      if (i === h) return true;
+      for (let k = 0; k < wants[i].length; k++) {
+        const j = wants[i][k];
+        if (usedS2[j]) continue;
+        usedS2[j] = true;
+        assigned[i] = j;
+        if (bt(i + 1)) return true;
+        usedS2[j] = false;
+        assigned[i] = -1;
+      }
+      return false;
+    }
+    if (!bt(0)) return null;
+    const out = [];
+    for (let i = 0; i < h; i++) out.push({ a: S1[i].id, b: S2[assigned[i]].id, rematch: false });
+    return out;
+  }
+
+  function dueColorOf(stats, id) {
+    const s = stats.get(id);
+    return s.whites < s.blacks ? 'W' : s.whites > s.blacks ? 'B' : null;
+  }
+
+  function colorFit(di, dj) {
+    if ((di === 'W' && dj === 'B') || (di === 'B' && dj === 'W')) return 0;
+    if (di === null && dj === null) return 1;
+    return 2;
+  }
+
+  /* Backtracking matcher over a preference-ranked list; returns pairs or null.
+     First tries the Dutch fold pairing, then a general nearest-score search.
+     `budget` allows up to `max` rematches (pairs of players who already met),
+     used only when no repeat-free pairing exists; each pair is marked. */
+  function matchPairs(order, stats, played, budget) {
+    const n = order.length;
+    if (n === 0) return [];
+    if (n % 2 !== 0) return null;
+    const fold = matchFold(order, stats, played);
+    if (fold) return fold;
+
+    const pairs = [];
+    const used = new Array(n).fill(false);
+    const INDEX = [];
+    for (let i = 0; i < n; i++) INDEX.push(i);
+
+    function preference(i) {
+      const pi = order[i], si = stats.get(pi.id);
+      const di = dueColorOf(stats, pi.id);
+      const cands = [];
+      for (let j = i + 1; j < n; j++) {
+        if (used[j]) continue;
+        const pj = order[j], sj = stats.get(pj.id);
+        const key = pairKey(pi.id, pj.id);
+        const isRematch = played.has(key);
+        if (isRematch && budget.used >= budget.max) continue;
+        cands.push({
+          j: j,
+          rematch: isRematch,
+          scoreDiff: Math.abs(si.score - sj.score),
+          colorFit: colorFit(di, dueColorOf(stats, pj.id)),
+          foldDist: Math.abs(j - (i + n / 2)) // fold partner sits half a list away
+        });
+      }
+      cands.sort(function (a, b) {
+        if (a.rematch !== b.rematch) return a.rematch - b.rematch;
+        if (a.scoreDiff !== b.scoreDiff) return a.scoreDiff - b.scoreDiff;
+        if (a.foldDist !== b.foldDist) return a.foldDist - b.foldDist;
+        if (a.colorFit !== b.colorFit) return a.colorFit - b.colorFit;
+        return a.j - b.j;
+      });
+      return cands;
+    }
+
+    let steps = 0;
+    const STEP_LIMIT = 500000;
+
+    function solve() {
+      if (++steps > STEP_LIMIT) return false;
+      const i = INDEX.find(function (k) { return !used[k]; });
+      if (i === undefined) return true;
+      const cands = preference(i);
+      for (let k = 0; k < cands.length; k++) {
+        const c = cands[k];
+        used[i] = used[c.j] = true;
+        if (c.rematch) budget.used++;
+        pairs.push([i, c.j, c.rematch]);
+        if (solve()) return true;
+        pairs.pop();
+        if (c.rematch) budget.used--;
+        used[i] = used[c.j] = false;
+      }
+      return false;
+    }
+
+    if (!solve()) return null;
+    return pairs.map(function (p) {
+      return { a: order[p[0]].id, b: order[p[1]].id, rematch: !!p[2] };
+    });
+  }
+
+  function colorCost(s, color) {
+    let cost = 0;
+    const imb = s.whites - s.blacks + (color === 'W' ? 1 : -1);
+    if (imb > 1 || imb < -1) cost += 10 * Math.abs(imb);
+    if (s.streak >= 2 && s.lastColor === color) cost += 16;      // would make three in a row
+    else if (s.lastColor === color) cost += 3;                   // extends a run of two
+    return cost;
+  }
+
+  function assignColors(t, stats, boards) {
+    let flip = t.rounds.length % 2 === 1; // alternate the down-board pattern each round
+    boards.forEach(function (board, idx) {
+      const a = stats.get(board.a), b = stats.get(board.b);
+      const dueA = dueColorOf(stats, board.a);
+      const dueB = dueColorOf(stats, board.b);
+      let orientAWhite; // true => board.a gets white
+      if (dueA === 'W' && dueB === 'B') orientAWhite = true;
+      else if (dueA === 'B' && dueB === 'W') orientAWhite = false;
+      else {
+        // Conflict or no preference: price both orientations, prefer balanced
+        // color counts and short color streaks. Tie-break by board alternation.
+        const costAWhite = colorCost(a, 'W') + colorCost(b, 'B');
+        const costBWhite = colorCost(a, 'B') + colorCost(b, 'W');
+        if (costAWhite !== costBWhite) {
+          orientAWhite = costAWhite < costBWhite;
+        } else {
+          const preferAW = (idx + (flip ? 1 : 0)) % 2 === 0;
+          orientAWhite = preferAW;
+        }
+      }
+      board.white = orientAWhite ? board.a : board.b;
+      board.black = orientAWhite ? board.b : board.a;
+    });
+  }
+
+  /* Score-group pairing with float-downs (classic Swiss). Odd groups send a
+     floater to the next group; groups that can't be paired internally merge
+     forward one group at a time. The last leftover player takes the bye. */
+  function solveGroups(groups, gi, floatIn, stats, played, budget) {
+    if (gi === groups.length) {
+      return floatIn.length <= 1 ? { pairs: [], floaters: floatIn } : null;
+    }
+    let pool = floatIn.concat(groups[gi]);
+    let g = gi;
+    for (;;) {
+      const cands = [];
+      if (pool.length % 2 === 1) {
+        const isLastGroup = g === groups.length - 1;
+        const c = pool.slice();
+        if (isLastGroup) {
+          // This floater ends up with the bye: favour a player who hasn't
+          // had one yet, then lowest score, then lowest rank.
+          c.sort(function (a, b) {
+            const sa = stats.get(a.id), sb = stats.get(b.id);
+            if (sa.byes !== sb.byes) return sa.byes - sb.byes;
+            if (sb.score !== sa.score) return sa.score - sb.score;
+            return b.num - a.num;
+          });
+        } else {
+          c.sort(function (a, b) { return b.num - a.num; }); // lowest ranked floats first
+        }
+        cands.push.apply(cands, c);
+      } else {
+        cands.push(null);
+      }
+      for (let k = 0; k < cands.length; k++) {
+        const fd = cands[k];
+        const rest = fd ? pool.filter(function (p) { return p !== fd; }) : pool;
+        const remembered = budget.used;
+        const pairs = matchPairs(rest, stats, played, budget);
+        if (pairs) {
+          const sub = solveGroups(groups, g + 1, fd ? [fd] : [], stats, played, budget);
+          if (sub) return { pairs: pairs.concat(sub.pairs), floaters: sub.floaters };
+        }
+        budget.used = remembered;
+      }
+      if (g + 1 < groups.length) {
+        g++;
+        pool = pool.concat(groups[g]);
+      } else {
+        return null;
+      }
+    }
+  }
+
+  /* The bye goes to the lowest-scored player who has had no bye yet;
+     bump the roster odd player out before any pairing starts. */
+  function pickByeId(t, stats, order) {
+    const ranked = order.slice().sort(function (a, b) {
+      const sa = stats.get(a.id), sb = stats.get(b.id);
+      if (sa.byes !== sb.byes) return sa.byes - sb.byes;
+      if (sb.score !== sa.score) return sa.score - sb.score;
+      return b.num - a.num; // lowest ranked player gets the bye
+    });
+    return ranked[0].id;
+  }
+
+  /* Pairs a round. Throws a friendly error if it can't be done yet. */
+  function pairRound(t) {
+    if (t.players.length < 2) throw new Error('You need at least 2 players to pair a round.');
+    for (let r = 0; r < t.rounds.length; r++) {
+      const round = t.rounds[r];
+      const missing = round.pairings.some(function (p) { return !p.result; });
+      if (missing) throw new Error('Round ' + (r + 1) + ' still has unfilled results. Fill them in before pairing the next round.');
+    }
+
+    const stats = deriveStats(t);
+    const order = rankOrder(t, stats);
+    let pairingPool = order;
+    let byeId = null;
+    if (order.length % 2 !== 0) {
+      byeId = pickByeId(t, stats, order);
+      pairingPool = order.filter(function (p) { return p.id !== byeId; });
+    }
+    const groups = scoreGroups(t, stats, pairingPool);
+    const played = playedSet(t);
+
+    /* Iterative deepening over the rematch budget, so if a repeat must ever
+       happen, it happens only in a round where no repeat-free pairing exists. */
+    const MAX_BUDGET = 8;
+    let solution = null, usedBudget = 0;
+    for (let k = 0; !solution && k <= MAX_BUDGET; k++) {
+      solution = solveGroups(groups, 0, [], stats, played, { used: 0, max: k });
+      if (solution) usedBudget = k;
+    }
+    if (!solution || solution.floaters.length > 0) {
+      throw new Error('Could not find a valid pairing. A manual adjustment may be needed for this unusual position.');
+    }
+    byeId = solution.floaters.length ? solution.floaters[0].id : byeId;
+
+    const boards = solution.pairs.map(function (p) {
+      return { a: p.a, b: p.b, rematch: usedBudget > 0, white: null, black: null, result: null };
+    });
+    assignColors(t, stats, boards);
+    const round = {
+      pairings: boards.map(function (b) {
+        return { whiteId: b.white, blackId: b.black, result: null, rematch: b.rematch };
+      }),
+      byeId: byeId
+    };
+    t.rounds.push(round);
+    return round;
+  }
+
+  function recordResult(t, roundIndex, pairingIndex, outcome) {
+    if (outcome !== 'W' && outcome !== 'B' && outcome !== 'D') return false;
+    const round = t.rounds[roundIndex];
+    const pairing = round && round.pairings[pairingIndex];
+    if (!pairing) return false;
+    pairing.result = outcome;
+    return true;
+  }
+
+  function roundComplete(t, roundIndex) {
+    const round = t.rounds[roundIndex];
+    return !!round && round.pairings.every(function (p) { return !!p.result; });
+  }
+
+  function allResults(t) {
+    return t.rounds.every(function (r) {
+      return r.pairings.every(function (p) { return !!p.result; });
+    });
+  }
+
+  function buchholz(t, stats, id) {
+    const s = stats.get(id);
+    return s.opponents.reduce(function (sum, oppId) {
+      return sum + stats.get(oppId).score;
+    }, 0);
+  }
+
+  function computeStandings(t) {
+    const stats = deriveStats(t);
+    const rows = t.players.map(function (p) {
+      const s = stats.get(p.id);
+      return {
+        id: p.id, name: p.name, num: p.num,
+        score: s.score, wins: s.wins, draws: s.draws, losses: s.losses,
+        buchholz: Math.round(buchholz(t, stats, p.id) * 100) / 100,
+        byes: s.byes
+      };
+    });
+    rows.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.buchholz !== a.buchholz) return b.buchholz - a.buchholz;
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return a.num - b.num;
+    });
+    let rank = 0, prevKey = null;
+    rows.forEach(function (r) {
+      const key = r.score + ':' + r.buchholz + ':' + r.wins;
+      if (key !== prevKey) { rank++; prevKey = key; }
+      r.rank = rank;
+    });
+    return rows;
+  }
+
+  function csvEscape(v) {
+    const s = String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  /* Cross table: rows are players, columns are player numbers. Cell is
+     "<opponent#><W|B><+|=|->"; a bye is "X", an unplayed game is blank. */
+  function crossTable(t) {
+    const n = t.players.length;
+    const grid = new Map(); // playerId -> { opp num, color, outcome } per opponent num
+    t.players.forEach(function (p) { grid.set(p.id, new Map()); });
+    t.rounds.forEach(function (round) {
+      round.pairings.forEach(function (pr) {
+        if (!pr.result) return;
+        const rowW = grid.get(pr.whiteId), rowB = grid.get(pr.blackId);
+        const w = findPlayer(t, pr.whiteId), b = findPlayer(t, pr.blackId);
+        if (!w || !b) return;
+        const sym = function (x) { return x === 'W' ? '+' : x === 'D' ? '=' : '-'; };
+        rowW.set(b.num, { opp: b.num, color: 'W', outcome: sym(pr.result) });
+        rowB.set(w.num, { opp: w.num, color: 'B', outcome: sym(pr.result === 'W' ? 'B' : pr.result === 'B' ? 'W' : 'D') });
+      });
+      if (round.byeId != null && grid.has(round.byeId)) {
+        // Mark the bye on the player's own diagonal cell (standard cross-table style).
+        const me = findPlayer(t, round.byeId);
+        if (me) grid.get(round.byeId).set(me.num, 'X');
+      }
+    });
+    return { grid: grid, size: n };
+  }
+
+  function crossTableCSV(t) {
+    const standings = computeStandings(t);
+    const ct = crossTable(t);
+    const lines = [];
+    const header = ['Player'];
+    for (let i = 1; i <= ct.size; i++) header.push(String(i));
+    header.push('Pts', 'Buchholz');
+    lines.push(header.map(csvEscape).join(','));
+    standings.forEach(function (row) {
+      const cells = [row.name];
+      const g = ct.grid.get(row.id);
+      for (let i = 1; i <= ct.size; i++) {
+        const cell = g.get(i);
+        if (cell === 'X') { cells.push('X'); continue; }
+        if (cell && cell.opp !== undefined) cells.push(String(cell.opp) + cell.color + cell.outcome);
+        else cells.push('');
+      }
+      cells.push(row.score, row.buchholz);
+      lines.push(cells.map(csvEscape).join(','));
+    });
+    return lines.join('\n') + '\n';
+  }
+
+  function standingsCSV(t) {
+    const lines = [['Rank', 'Player', 'Points', 'W', 'D', 'L', 'Buchholz', 'Byes'].map(csvEscape).join(',')];
+    computeStandings(t).forEach(function (r) {
+      lines.push([r.rank, r.name, r.score, r.wins, r.draws, r.losses, r.buchholz, r.byes].map(csvEscape).join(','));
+    });
+    return lines.join('\n') + '\n';
+  }
+
+  const SwissCore = {
+    createTournament: createTournament,
+    addPlayer: addPlayer,
+    removePlayer: removePlayer,
+    findPlayer: findPlayer,
+    deriveStats: deriveStats,
+    pairRound: pairRound,
+    recordResult: recordResult,
+    roundComplete: roundComplete,
+    allResults: allResults,
+    computeStandings: computeStandings,
+    crossTable: crossTable,
+    crossTableCSV: crossTableCSV,
+    standingsCSV: standingsCSV
+  };
+
+  global.SwissCore = SwissCore;
+})(typeof window !== 'undefined' ? window : globalThis);
+/* CORE-END */
+</script>
+
+<script>
+/* ---- UI layer: everything below touches the DOM and is not tested directly. ---- */
+(function () {
+  'use strict';
+
+  const STORAGE_KEY = 'club-swiss-tournament-v1';
+  const CORE = window.SwissCore;
+
+  let t;
+  try {
+    t = JSON.parse(localStorage.getItem(STORAGE_KEY)) || CORE.createTournament();
+  } catch (e) {
+    t = CORE.createTournament();
+  }
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(t)); } catch (e) { /* private mode etc. */ }
+  }
+
+  const noticeEl = document.getElementById('notice');
+  let noticeTimer = null;
+  function notice(msg, kind) {
+    noticeEl.innerHTML = msg ? '<div class="notice notice-' + (kind || 'ok') + '">' + esc(msg) + '</div>' : '';
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(function () { noticeEl.innerHTML = ''; }, 4000);
+  }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function pts(x) {
+    if (x === 0) return '0';
+    if (x === 0.5) return '½';
+    if (x === 1) return '1';
+    return String(x).replace(/\.5$/, '½').replace(/\.0$/, '');
+  }
+
+  /* ---------- players ---------- */
+  const nameInput = document.getElementById('player-name');
+  const bulkInput = document.getElementById('players-bulk');
+
+  document.getElementById('add-player-btn').addEventListener('click', addOne);
+  nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') addOne(); });
+  function addOne() {
+    const p = CORE.addPlayer(t, nameInput.value);
+    if (!p) { notice('Could not add that player — check for a duplicate or empty name.', 'warn'); return; }
+    nameInput.value = '';
+    save();
+    nameInput.focus();
+    render();
+  }
+
+  document.getElementById('add-bulk-btn').addEventListener('click', function () {
+    const names = bulkInput.value.split(/[,;\n]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!names.length) { notice('Type or paste some names first.', 'warn'); return; }
+    let added = 0, skipped = 0;
+    names.forEach(function (n) {
+      if (CORE.addPlayer(t, n)) added++; else skipped++;
+    });
+    bulkInput.value = '';
+    notice('Added ' + added + ' player' + (added === 1 ? '' : 's') + (skipped ? ' (' + skipped + ' skipped as duplicates)' : '') + '.');
+    save();
+    render();
+  });
+
+  document.getElementById('players-list').addEventListener('click', function (e) {
+    const btn = e.target.closest('button[data-remove]');
+    if (!btn) return;
+    if (t.rounds.length > 0) { notice('The tournament has started — players can no longer be removed.', 'warn'); return; }
+    CORE.removePlayer(t, Number(btn.dataset.remove));
+    save();
+    render();
+  });
+
+  /* ---------- pairing ---------- */
+  const pairBtn = document.getElementById('pair-btn');
+  pairBtn.addEventListener('click', function () {
+    try {
+      CORE.pairRound(t);
+      save();
+      notice('Paired round ' + t.rounds.length + '. Enter the results below.');
+      render();
+    } catch (err) {
+      notice(err.message, 'warn');
+    }
+  });
+
+  document.getElementById('reset-btn').addEventListener('click', function () {
+    if (!confirm('Start over? This clears every player, round and result.')) return;
+    t = CORE.createTournament();
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    render();
+  });
+
+  document.getElementById('rounds-area').addEventListener('click', function (e) {
+    const btn = e.target.closest('button[data-res]');
+    if (!btn) return;
+    const roundIndex = Number(btn.dataset.round);
+    const prIndex = Number(btn.dataset.pr);
+    CORE.recordResult(t, roundIndex, prIndex, btn.dataset.res);
+    save();
+    if (CORE.roundComplete(t, roundIndex)) {
+      notice('Round ' + (roundIndex + 1) + ' complete.');
+    }
+    render();
+  });
+
+  document.getElementById('export-standings').addEventListener('click', function () {
+    download('standings.csv', CORE.standingsCSV(t));
+  });
+  document.getElementById('export-cross').addEventListener('click', function () {
+    download('cross-table.csv', CORE.crossTableCSV(t));
+  });
+
+  function download(filename, text) {
+    const blob = new Blob([text], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /* ---------- rendering ---------- */
+  function render() {
+    renderPlayers();
+    renderRounds();
+    renderStandings();
+    renderCross();
+  }
+
+  function renderPlayers() {
+    document.getElementById('player-count').textContent = t.players.length;
+    const area = document.getElementById('players-list');
+    if (!t.players.length) {
+      area.innerHTML = '<span class="empty">No players yet.</span>';
+      return;
+    }
+    area.innerHTML = t.players.map(function (p) {
+      const canRemove = t.rounds.length === 0;
+      return '<span class="player-pill">' + esc(p.name) +
+        (canRemove ? '<button data-remove="' + p.id + '" title="Remove ' + esc(p.name) + '" aria-label="Remove ' + esc(p.name) + '">×</button>' : '') +
+        '</span>';
+    }).join('');
+  }
+
+  function renderRounds() {
+    document.getElementById('round-title').textContent = 'Rounds' + (t.rounds.length ? ' (' + t.rounds.length + ' so far)' : '');
+    if (!t.rounds.length) {
+      document.getElementById('pair-btn').textContent = 'Pair round 1';
+      document.getElementById('pair-hint').textContent = t.players.length
+        ? (t.players.length % 2
+          ? t.players.length + ' players is an odd number, so one player will get a bye each round. The lowest-scored player who has not yet had a bye gets it.'
+          : t.players.length + ' players — everyone plays every round.')
+        : 'Add players above, then pair round 1.';
+      document.getElementById('rounds-area').innerHTML = '';
+      return;
+    }
+
+    document.getElementById('pair-btn').textContent = 'Pair round ' + (t.rounds.length + 1);
+    const current = t.rounds[t.rounds.length - 1];
+    document.getElementById('pair-hint').textContent = CORE.roundComplete(t, t.rounds.length - 1)
+      ? 'All results are in — ready to pair the next round.'
+      : 'Enter a result for every board to finish this round.';
+
+    const html = t.rounds.map(function (round, r) {
+      const complete = CORE.roundComplete(t, r);
+      let out = '<h2 style="margin:.75rem 0 .5rem; font-size:1rem;">Round ' + (r + 1) +
+        (complete ? ' <span class="chip">complete</span>' : ' <span class="chip bye">in progress</span>') + '</h2>';
+      out += '<table><thead><tr><th>Board</th><th>White</th><th></th><th>Black</th><th>Result</th></tr></thead><tbody>';
+      round.pairings.forEach(function (pr, i) {
+        const w = CORE.findPlayer(t, pr.whiteId), b = CORE.findPlayer(t, pr.blackId);
+        const btn = function (res, label) {
+          const on = pr.result === res;
+          return '<button class="res-btn' + (on ? ' sel' : '') +
+            '" style="' + (on ? 'background:var(--accent);color:#fff;border-color:var(--accent)' : '') +
+            '" data-res="' + res + '" data-round="' + r + '" data-pr="' + i + '">' + label + '</button>';
+        };
+        out += '<tr class="board-row ' + (pr.result ? 'result-' + pr.result.toLowerCase() : '') + '">' +
+          '<td class="num">' + (i + 1) + '</td>' +
+          '<td>' + esc(w.name) + '</td><td class="num">–</td><td>' + esc(b.name) + (pr.rematch ? ' <span class="chip bye">rematch</span>' : '') + '</td>' +
+          '<td><div class="res-btns">' + btn('W', '1–0') + btn('D', '½–½') + btn('B', '0–1') + '</div></td></tr>';
+      });
+      out += '</tbody></table>';
+      if (round.byeId != null) {
+        const bp = CORE.findPlayer(t, round.byeId);
+        out += '<p class="hint">Bye: <strong>' + esc(bp.name) + '</strong> receives a full point this round.</p>';
+      }
+      return out;
+    }).join('');
+    document.getElementById('rounds-area').innerHTML = html;
+  }
+
+  function renderStandings() {
+    const area = document.getElementById('standings-area');
+    const standings = CORE.computeStandings(t);
+    if (!standings.length || !CORE.allResults(t)) {
+      area.innerHTML = '<p class="empty">Standings appear once every round has its results.</p>';
+      return;
+    }
+    let html = '<table><thead><tr><th class="num">#</th><th>Player</th><th class="num">Pts</th><th class="num">W</th><th class="num">D</th><th class="num">L</th><th class="num">Buchholz</th><th class="num">Byes</th></tr></thead><tbody>';
+    standings.forEach(function (r) {
+      html += '<tr><td class="num">' + r.rank + '</td><td class="me">' + esc(r.name) + '</td>' +
+        '<td class="num">' + pts(r.score) + '</td><td class="num">' + r.wins + '</td><td class="num">' + r.draws + '</td>' +
+        '<td class="num">' + r.losses + '</td><td class="num">' + pts(r.buchholz) + '</td><td class="num">' + r.byes + '</td></tr>';
+    });
+    area.innerHTML = html + '</tbody></table>';
+  }
+
+  function renderCross() {
+    const area = document.getElementById('cross-area');
+    if (!t.rounds.length) {
+      area.innerHTML = '<p class="empty">The cross-table builds as rounds are played.</p>';
+      return;
+    }
+    const ct = CORE.crossTable(t);
+    let html = '<table class="cross"><thead><tr><th class="num">#</th><th>Player</th>';
+    for (let i = 1; i <= ct.size; i++) html += '<th class="num">' + i + '</th>';
+    html += '<th class="num">Pts</th></tr></thead><tbody>';
+    CORE.computeStandings(t).forEach(function (row) {
+      const g = ct.grid.get(row.id);
+      html += '<tr><td class="num">' + row.num + '</td><td class="me">' + esc(row.name) + '</td>';
+      for (let i = 1; i <= ct.size; i++) {
+        const cell = g.get(i);
+        let text = '';
+        if (cell === 'X') text = 'X';
+        else if (cell && cell.opp !== undefined) text = cell.opp + cell.color + cell.outcome;
+        html += '<td class="num">' + esc(text) + '</td>';
+      }
+      html += '<td class="num">' + pts(row.score) + '</td></tr>';
+    });
+    area.innerHTML = html + '</tbody></table>';
+    if (!CORE.allResults(t)) {
+      area.innerHTML += '<p class="hint">Standings and the cross-table update as each round\'s results are entered.</p>';
+    }
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
